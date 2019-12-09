@@ -1,6 +1,6 @@
 package ru.skillbranch.kotlinexample
 
-import ru.skillbranch.kotlinexample.extensions.trimPhone
+import ru.skillbranch.kotlinexample.extentions.trimPhone
 
 object UserHolder {
     val map = mutableMapOf<String, User>()
