@@ -35,7 +35,7 @@ object UserHolder {
                 else null
             }
         } else {
-            map[login.trimPhone()]?.let {user ->
+            map[login.trimPhone()]?.let { user ->
                 if (user.checkPassword(password)) user.userInfo
                 else null
             }
@@ -54,19 +54,16 @@ object UserHolder {
 
     fun importUsers(list: List<String>): List<User> {
         val users = mutableListOf<User>()
-        list.forEach {string ->
+        list.forEach { string ->
             val userFields = string.split(";")
-            println(userFields)
             val user = User.makeUserFromImport(
                 fullName = userFields[0].trim(),
                 email = userFields[1].ifEmpty { null },
                 passwordInfo = userFields[2].ifEmpty { null },
-                phone =  userFields[3].ifEmpty { null }
+                phone = userFields[3].ifEmpty { null }
             )
-            println("$user")
             map[user.login] = user
             users.add(user)
-
         }
         return users
     }

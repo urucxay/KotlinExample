@@ -1,6 +1,7 @@
 package ru.skillbranch.kotlinexample
 
 import androidx.annotation.VisibleForTesting
+import ru.skillbranch.kotlinexample.extentions.trimPhone
 import java.math.BigInteger
 import java.security.MessageDigest
 import java.security.SecureRandom
@@ -26,7 +27,7 @@ class User private constructor(
 
     private var phone: String? = null
         set(value) {
-            field = value?.replace("[^+\\d]".toRegex(), "")
+            field = value?.trimPhone()
         }
 
     private var _login: String? = null
@@ -36,13 +37,12 @@ class User private constructor(
         }
         get() = _login!!
 
+    private var _salt: String? = null
     private val salt: String by lazy {
-        ByteArray(16).also { SecureRandom().nextBytes(it) }.toString()
+        _salt ?: ByteArray(16).also { SecureRandom().nextBytes(it) }.toString()
     }
 
     lateinit var passwordHash: String
-
-    private var importSalt: String? = null
 
     @VisibleForTesting(otherwise = VisibleForTesting.NONE)
     var accessCode: String? = null
@@ -87,8 +87,8 @@ class User private constructor(
     ) {
         println("secondary import constructor")
         if (!passwordInfo.isNullOrBlank()) {
-            importSalt = passwordInfo.split(":").first()
-            passwordHash = passwordInfo.replace(":", "")
+            _salt = passwordInfo.split(":").first()
+            passwordHash = passwordInfo.split(":").last()
         }
     }
 
@@ -121,8 +121,8 @@ class User private constructor(
     }
 
     fun encrypt(password: String): String {
-        return if (importSalt == null) salt.plus(password.md5())
-        else importSalt.plus(password.md5())
+        return if (_salt == null) salt.plus(password).md5()
+        else _salt.plus(password).md5()
     }
 
     private fun String.md5(): String {
