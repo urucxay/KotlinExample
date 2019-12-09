@@ -35,10 +35,14 @@ class User private constructor(
             _login = value?.toLowerCase()
         }
         get() = _login!!
+
     private val salt: String by lazy {
         ByteArray(16).also { SecureRandom().nextBytes(it) }.toString()
     }
+
     lateinit var passwordHash: String
+
+    private var importSalt: String? = null
 
     @VisibleForTesting(otherwise = VisibleForTesting.NONE)
     var accessCode: String? = null
@@ -67,11 +71,32 @@ class User private constructor(
         sendAccessCode(rawPhone, code)
     }
 
+    //for import
+    constructor(
+        firstName: String,
+        lastName: String?,
+        email: String?,
+        passwordInfo: String?,
+        rawPhone: String?
+    ) : this(
+        firstName = firstName,
+        lastName = lastName,
+        email = email,
+        rawPhone = rawPhone,
+        meta = mapOf("src" to "csv")
+    ) {
+        println("secondary import constructor")
+        if (!passwordInfo.isNullOrBlank()) {
+            importSalt = passwordInfo.split(":").first()
+            passwordHash = passwordInfo.replace(":", "")
+        }
+    }
+
     init {
         println("First init block, primary constructor was called")
 
         check(!firstName.isBlank()) { "FirstName must be not blank" }
-        check(email.isNullOrEmpty() || rawPhone.isNullOrBlank()) { "Email or phone must be not blank" }
+        check(!email.isNullOrBlank() || !rawPhone.isNullOrBlank()) { "Email or phone must be not blank" }
 
         phone = rawPhone
         login = email ?: phone!!
@@ -95,7 +120,10 @@ class User private constructor(
         else throw IllegalArgumentException("The entered password does not match the current password")
     }
 
-    fun encrypt(password: String) = salt.plus(password.md5())
+    fun encrypt(password: String): String {
+        return if (importSalt == null) salt.plus(password.md5())
+        else importSalt.plus(password.md5())
+    }
 
     private fun String.md5(): String {
         val md = MessageDigest.getInstance("MD5")
@@ -130,14 +158,26 @@ class User private constructor(
 
             return when {
                 !phone.isNullOrBlank() -> User(firstName, lastName, rawPhone = phone)
-                !email.isNullOrBlank() && !password.isNullOrBlank() -> User(
-                    firstName,
-                    lastName,
-                    email = email,
-                    password = password
-                )
+                !email.isNullOrBlank() && !password.isNullOrBlank() ->
+                    User(firstName, lastName, email = email, password = password)
                 else -> throw IllegalArgumentException("Email or phone must be not bull or blank")
             }
+        }
+
+        fun makeUserFromImport(
+            fullName: String,
+            email: String? = null,
+            passwordInfo: String? = null,
+            phone: String? = null
+        ): User {
+            val (firstName, lastName) = fullName.fullNameToPair()
+            return User(
+                firstName = firstName,
+                lastName = lastName,
+                email = email,
+                passwordInfo = passwordInfo,
+                rawPhone = phone
+            )
         }
 
         private fun String.fullNameToPair(): Pair<String, String?> {
